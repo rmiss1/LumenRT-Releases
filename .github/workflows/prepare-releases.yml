@@ -1,0 +1,52 @@
+name: Prepare Lumen RT Releases
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/prepare-releases.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: lumenrt-release-preparation
+  cancel-in-progress: false
+
+jobs:
+  create-releases:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out release notes
+        uses: actions/checkout@v4
+
+      - name: Create missing version tags and release pages
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          versions=(
+            "0.1.0-alpha"
+            "0.1.0-alpha.1"
+            "0.1.0-alpha.2"
+            "0.1.2-alpha"
+            "0.1.2-alpha.1"
+            "0.1.3-alpha"
+            "0.1.4"
+          )
+          for version in "${versions[@]}"; do
+            tag="v${version}"
+            if gh release view "${tag}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+              echo "Release already exists: ${tag}"
+              continue
+            fi
+            echo "Preparing ${tag}"
+            gh release create "${tag}" \
+              --repo "${GITHUB_REPOSITORY}" \
+              --title "Lumen RT ${version} — Early Alpha" \
+              --notes-file "release-notes/${tag}.md" \
+              --prerelease \
+              --target main
+          done
